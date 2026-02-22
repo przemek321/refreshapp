@@ -118,14 +118,17 @@ class MainActivity : Activity() {
                 val termuxBash = "/data/data/com.termux/files/usr/bin/bash"
                 val termuxPrefix = "/data/data/com.termux/files/usr"
                 val termuxHome = "/data/data/com.termux/files/home"
-                val cmd = "export PREFIX=$termuxPrefix; " +
+                // Copy script and bash to /data/local/tmp to bypass SELinux
+                val tmpScript = "/data/local/tmp/$name"
+                val tmpBash = "/data/local/tmp/termux_bash"
+                val cmd = "cp $path $tmpScript; " +
+                    "cp $termuxBash $tmpBash; " +
+                    "chmod +x $tmpScript $tmpBash; " +
+                    "export PREFIX=$termuxPrefix; " +
                     "export HOME=$termuxHome; " +
                     "export PATH=$termuxPrefix/bin:$termuxPrefix/bin/applets:\$PATH; " +
                     "export LD_LIBRARY_PATH=$termuxPrefix/lib; " +
-                    "echo CHECK_SCRIPT: && ls -la $path; " +
-                    "echo CHECK_BASH: && ls -la $termuxBash; " +
-                    "chmod +x $path; " +
-                    "$termuxBash $path >$logFile 2>&1; " +
+                    "$tmpBash $tmpScript >$logFile 2>&1; " +
                     "echo EXIT_CODE:\$?"
                 logToConsole("$ running $name ...")
                 val process = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
