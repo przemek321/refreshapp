@@ -59,11 +59,45 @@
         android:text="Stop" />
 
     <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Scripts"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="8dp" />
+
+    <CheckBox
+        android:id="@+id/chkMonitor"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="twitter_monitor.sh"
+        android:textSize="15sp"
+        android:layout_marginBottom="8dp" />
+
+    <CheckBox
+        android:id="@+id/chkUpload"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="upload.sh"
+        android:textSize="15sp"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/scriptStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="13sp"
+        android:textColor="#666666"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Open X app, then press Start"
         android:textSize="14sp"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="16dp"
         android:textColor="#666666" />
 
 </LinearLayout>
