@@ -40,6 +40,11 @@ class MainActivity : Activity() {
         }
         
         btnStart.setOnClickListener {
+            // Open X (Twitter) app, then start refreshing after delay
+            val launchIntent = packageManager.getLaunchIntentForPackage("com.twitter.android")
+            if (launchIntent != null) {
+                startActivity(launchIntent)
+            }
             RefreshService.isRunning = true
             statusText.text = "Status: RUNNING"
         }
