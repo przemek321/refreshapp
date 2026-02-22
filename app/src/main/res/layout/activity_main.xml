@@ -60,7 +60,48 @@
         android:id="@+id/btnStop"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Stop" />
+        android:text="Stop"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Restart X"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/restartIntervalText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Restart every: 30 min"
+        android:textSize="14sp"
+        android:layout_marginBottom="4dp" />
+
+    <SeekBar
+        android:id="@+id/restartIntervalSeek"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="120"
+        android:progress="30"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/btnRestartX"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Restart X Now"
+        android:layout_marginBottom="4dp" />
+
+    <CheckBox
+        android:id="@+id/chkAutoRestart"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Auto restart X"
+        android:textSize="15sp"
+        android:layout_marginBottom="8dp" />
 
     <TextView
         android:layout_width="match_parent"

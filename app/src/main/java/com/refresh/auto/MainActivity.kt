@@ -21,6 +21,8 @@ class MainActivity : Activity() {
     private val TAG = "RefreshApp"
     private lateinit var consoleOutput: TextView
     private lateinit var consoleScroll: ScrollView
+    private var restartIntervalMinutes = 30
+    private var autoRestartRunnable: Runnable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,6 +74,38 @@ class MainActivity : Activity() {
             statusText.text = "Status: STOPPED"
         }
 
+        val btnRestartX = findViewById<Button>(R.id.btnRestartX)
+        val restartIntervalText = findViewById<TextView>(R.id.restartIntervalText)
+        val restartIntervalSeek = findViewById<SeekBar>(R.id.restartIntervalSeek)
+        val chkAutoRestart = findViewById<CheckBox>(R.id.chkAutoRestart)
+
+        restartIntervalSeek.progress = 30
+        restartIntervalText.text = "Restart every: 30 min"
+
+        restartIntervalSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val mins = if (progress < 5) 5 else progress
+                restartIntervalMinutes = mins
+                restartIntervalText.text = "Restart every: ${mins} min"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        btnRestartX.setOnClickListener {
+            restartX()
+        }
+
+        chkAutoRestart.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                logToConsole(">>> Auto restart X enabled (every ${restartIntervalMinutes} min)")
+                startAutoRestart()
+            } else {
+                logToConsole(">>> Auto restart X disabled")
+                stopAutoRestart()
+            }
+        }
+
         btnClearLog.setOnClickListener {
             consoleOutput.text = ""
         }
@@ -101,6 +135,50 @@ class MainActivity : Activity() {
                 logToConsole(">>> Stopped upload.sh checkbox")
             }
         }
+    }
+
+    private fun restartX() {
+        logToConsole(">>> Restarting X...")
+        Thread {
+            try {
+                val pkg = "com.twitter.android"
+                val altPkg = "com.x.android"
+                val stopProc = Runtime.getRuntime().exec(arrayOf("su", "-c", "am force-stop $pkg; am force-stop $altPkg"))
+                stopProc.waitFor()
+                handler.post { logToConsole(">>> X killed, reopening in 2s...") }
+                Thread.sleep(2000)
+                handler.post {
+                    val xIntent = packageManager.getLaunchIntentForPackage(pkg)
+                        ?: packageManager.getLaunchIntentForPackage(altPkg)
+                    if (xIntent != null) {
+                        startActivity(xIntent)
+                        logToConsole(">>> X reopened")
+                    } else {
+                        logToConsole(">>> ERROR: X app not found")
+                    }
+                }
+            } catch (e: Exception) {
+                handler.post { logToConsole(">>> ERROR: ${e.message}") }
+                Log.e(TAG, "Restart X error", e)
+            }
+        }.start()
+    }
+
+    private fun startAutoRestart() {
+        stopAutoRestart()
+        autoRestartRunnable = object : Runnable {
+            override fun run() {
+                logToConsole(">>> Auto restarting X (every ${restartIntervalMinutes} min)...")
+                restartX()
+                handler.postDelayed(this, restartIntervalMinutes * 60 * 1000L)
+            }
+        }
+        handler.postDelayed(autoRestartRunnable!!, restartIntervalMinutes * 60 * 1000L)
+    }
+
+    private fun stopAutoRestart() {
+        autoRestartRunnable?.let { handler.removeCallbacks(it) }
+        autoRestartRunnable = null
     }
 
     private fun logToConsole(line: String) {
@@ -160,5 +238,10 @@ class MainActivity : Activity() {
         super.onResume()
         val statusText = findViewById<TextView>(R.id.statusText)
         statusText.text = if (RefreshService.isRunning) "Status: RUNNING" else "Status: STOPPED"
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        stopAutoRestart()
     }
 }
