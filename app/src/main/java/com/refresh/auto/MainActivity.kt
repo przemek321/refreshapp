@@ -112,67 +112,22 @@ class MainActivity : Activity() {
 
     private fun runScript(path: String, statusView: TextView) {
         val name = path.substringAfterLast("/")
-        val logFile = "/data/local/tmp/${name}.log"
-        Thread {
-            try {
-                val termuxBash = "/data/data/com.termux/files/usr/bin/bash"
-                val termuxPrefix = "/data/data/com.termux/files/usr"
-                val termuxHome = "/data/data/com.termux/files/home"
-                // Copy script and bash to /data/local/tmp to bypass SELinux
-                val tmpScript = "/data/local/tmp/$name"
-                val tmpBash = "/data/local/tmp/termux_bash"
-                val cmd = "cp $path $tmpScript; " +
-                    "cp $termuxBash $tmpBash; " +
-                    "chmod +x $tmpScript $tmpBash; " +
-                    "export PREFIX=$termuxPrefix; " +
-                    "export HOME=$termuxHome; " +
-                    "export PATH=$termuxPrefix/bin:$termuxPrefix/bin/applets:\$PATH; " +
-                    "export LD_LIBRARY_PATH=$termuxPrefix/lib; " +
-                    "$tmpBash $tmpScript >$logFile 2>&1; " +
-                    "echo EXIT_CODE:\$?"
-                logToConsole("$ running $name ...")
-                val process = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
-
-                val reader = BufferedReader(InputStreamReader(process.inputStream))
-                var line: String?
-                while (reader.readLine().also { line = it } != null) {
-                    val outputLine = line ?: ""
-                    logToConsole(outputLine)
-                }
-
-                // Also read stderr from su itself
-                val errReader = BufferedReader(InputStreamReader(process.errorStream))
-                while (errReader.readLine().also { line = it } != null) {
-                    logToConsole("[stderr] ${line ?: ""}")
-                }
-
-                val exitCode = process.waitFor()
-                logToConsole(">>> su exited with code $exitCode")
-
-                // Read the log file for full script output
-                logToConsole(">>> Reading $name log:")
-                val logProcess = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat $logFile"))
-                val logReader = BufferedReader(InputStreamReader(logProcess.inputStream))
-                while (logReader.readLine().also { line = it } != null) {
-                    logToConsole("  ${line ?: ""}")
-                }
-                logProcess.waitFor()
-
-                handler.post {
-                    if (exitCode == 0) {
-                        statusView.text = "$name finished OK"
-                    } else {
-                        statusView.text = "$name exit code $exitCode"
-                    }
-                }
-            } catch (e: Exception) {
-                logToConsole(">>> ERROR: ${e.message}")
-                handler.post {
-                    statusView.text = "Error: ${e.message}"
-                    Log.e(TAG, "Script error", e)
-                }
-            }
-        }.start()
+        logToConsole("$ launching $name via Termux...")
+        try {
+            val intent = Intent()
+            intent.setClassName("com.termux", "com.termux.app.RunCommandService")
+            intent.setAction("com.termux.RUN_COMMAND")
+            intent.putExtra("com.termux.RUN_COMMAND_PATH", path)
+            intent.putExtra("com.termux.RUN_COMMAND_WORKDIR", "/data/data/com.termux/files/home")
+            intent.putExtra("com.termux.RUN_COMMAND_BACKGROUND", true)
+            startService(intent)
+            logToConsole(">>> $name sent to Termux")
+            statusView.text = "$name launched via Termux"
+        } catch (e: Exception) {
+            logToConsole(">>> ERROR: ${e.message}")
+            statusView.text = "Error: ${e.message}"
+            Log.e(TAG, "Script error", e)
+        }
     }
 
     override fun onResume() {
