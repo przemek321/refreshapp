@@ -115,7 +115,14 @@ class MainActivity : Activity() {
         logToConsole("$ launching $name via Termux (root)...")
         Thread {
             try {
-                val cmd = "am startservice" +
+                // First ensure Termux is running by launching it
+                val launchCmd = "am start -n com.termux/.app.TermuxActivity"
+                val launchProc = Runtime.getRuntime().exec(arrayOf("su", "-c", launchCmd))
+                launchProc.waitFor()
+                Thread.sleep(1000)
+
+                // Now start the script via Termux RUN_COMMAND using foreground service
+                val cmd = "am start-foreground-service" +
                     " --user 0" +
                     " -n com.termux/.app.RunCommandService" +
                     " -a com.termux.RUN_COMMAND" +
@@ -135,6 +142,7 @@ class MainActivity : Activity() {
                         statusView.text = "$name launched via Termux"
                     } else {
                         logToConsole(">>> ERROR (exit $exitCode): $errors")
+                        if (output.isNotBlank()) logToConsole(output.trim())
                         statusView.text = "Error launching $name"
                     }
                 }
