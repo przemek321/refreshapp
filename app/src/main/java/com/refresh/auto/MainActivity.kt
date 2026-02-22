@@ -112,7 +112,7 @@ class MainActivity : Activity() {
 
     private fun runScript(path: String, statusView: TextView) {
         val name = path.substringAfterLast("/")
-        val logFile = "/data/data/com.termux/files/home/${name}.log"
+        val logFile = "/data/local/tmp/${name}.log"
         Thread {
             try {
                 val termuxBash = "/data/data/com.termux/files/usr/bin/bash"
@@ -122,6 +122,8 @@ class MainActivity : Activity() {
                     "export HOME=$termuxHome; " +
                     "export PATH=$termuxPrefix/bin:$termuxPrefix/bin/applets:\$PATH; " +
                     "export LD_LIBRARY_PATH=$termuxPrefix/lib; " +
+                    "echo CHECK_SCRIPT: && ls -la $path; " +
+                    "echo CHECK_BASH: && ls -la $termuxBash; " +
                     "chmod +x $path; " +
                     "$termuxBash $path >$logFile 2>&1; " +
                     "echo EXIT_CODE:\$?"
