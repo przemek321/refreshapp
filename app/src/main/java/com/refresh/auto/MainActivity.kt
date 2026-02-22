@@ -112,28 +112,47 @@ class MainActivity : Activity() {
 
     private fun runScript(path: String, statusView: TextView) {
         val name = path.substringAfterLast("/")
+        val logFile = "/data/data/com.termux/files/home/${name}.log"
         Thread {
             try {
                 val termuxBash = "/data/data/com.termux/files/usr/bin/bash"
-                val termuxEnv = "export PREFIX=/data/data/com.termux/files/usr && " +
-                    "export HOME=/data/data/com.termux/files/home && " +
-                    "export PATH=/data/data/com.termux/files/usr/bin:/data/data/com.termux/files/usr/bin/applets:\$PATH && " +
-                    "export LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib"
-                val cmd = "$termuxEnv && chmod +x $path && $termuxBash $path 2>&1"
-                logToConsole("$ su -c \"$termuxBash $path\"")
+                val termuxPrefix = "/data/data/com.termux/files/usr"
+                val termuxHome = "/data/data/com.termux/files/home"
+                val cmd = "export PREFIX=$termuxPrefix; " +
+                    "export HOME=$termuxHome; " +
+                    "export PATH=$termuxPrefix/bin:$termuxPrefix/bin/applets:\$PATH; " +
+                    "export LD_LIBRARY_PATH=$termuxPrefix/lib; " +
+                    "chmod +x $path; " +
+                    "$termuxBash $path >$logFile 2>&1; " +
+                    "echo EXIT_CODE:\$?"
+                logToConsole("$ running $name ...")
                 val process = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
 
-                // Read stdout+stderr live
                 val reader = BufferedReader(InputStreamReader(process.inputStream))
                 var line: String?
                 while (reader.readLine().also { line = it } != null) {
                     val outputLine = line ?: ""
                     logToConsole(outputLine)
-                    Log.d(TAG, "[$name] $outputLine")
+                }
+
+                // Also read stderr from su itself
+                val errReader = BufferedReader(InputStreamReader(process.errorStream))
+                while (errReader.readLine().also { line = it } != null) {
+                    logToConsole("[stderr] ${line ?: ""}")
                 }
 
                 val exitCode = process.waitFor()
-                logToConsole(">>> $name exited with code $exitCode")
+                logToConsole(">>> su exited with code $exitCode")
+
+                // Read the log file for full script output
+                logToConsole(">>> Reading $name log:")
+                val logProcess = Runtime.getRuntime().exec(arrayOf("su", "-c", "cat $logFile"))
+                val logReader = BufferedReader(InputStreamReader(logProcess.inputStream))
+                while (logReader.readLine().also { line = it } != null) {
+                    logToConsole("  ${line ?: ""}")
+                }
+                logProcess.waitFor()
+
                 handler.post {
                     if (exitCode == 0) {
                         statusView.text = "$name finished OK"
