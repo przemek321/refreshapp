@@ -112,22 +112,40 @@ class MainActivity : Activity() {
 
     private fun runScript(path: String, statusView: TextView) {
         val name = path.substringAfterLast("/")
-        logToConsole("$ launching $name via Termux...")
-        try {
-            val intent = Intent()
-            intent.setClassName("com.termux", "com.termux.app.RunCommandService")
-            intent.setAction("com.termux.RUN_COMMAND")
-            intent.putExtra("com.termux.RUN_COMMAND_PATH", path)
-            intent.putExtra("com.termux.RUN_COMMAND_WORKDIR", "/data/data/com.termux/files/home")
-            intent.putExtra("com.termux.RUN_COMMAND_BACKGROUND", true)
-            startService(intent)
-            logToConsole(">>> $name sent to Termux")
-            statusView.text = "$name launched via Termux"
-        } catch (e: Exception) {
-            logToConsole(">>> ERROR: ${e.message}")
-            statusView.text = "Error: ${e.message}"
-            Log.e(TAG, "Script error", e)
-        }
+        logToConsole("$ launching $name via Termux (root)...")
+        Thread {
+            try {
+                val cmd = "am startservice" +
+                    " --user 0" +
+                    " -n com.termux/.app.RunCommandService" +
+                    " -a com.termux.RUN_COMMAND" +
+                    " --es com.termux.RUN_COMMAND_PATH '$path'" +
+                    " --es com.termux.RUN_COMMAND_WORKDIR '/data/data/com.termux/files/home'" +
+                    " --ez com.termux.RUN_COMMAND_BACKGROUND true"
+                val process = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
+                val reader = BufferedReader(InputStreamReader(process.inputStream))
+                val errReader = BufferedReader(InputStreamReader(process.errorStream))
+                val output = reader.readText()
+                val errors = errReader.readText()
+                val exitCode = process.waitFor()
+                handler.post {
+                    if (exitCode == 0) {
+                        logToConsole(">>> $name sent to Termux OK")
+                        if (output.isNotBlank()) logToConsole(output.trim())
+                        statusView.text = "$name launched via Termux"
+                    } else {
+                        logToConsole(">>> ERROR (exit $exitCode): $errors")
+                        statusView.text = "Error launching $name"
+                    }
+                }
+            } catch (e: Exception) {
+                handler.post {
+                    logToConsole(">>> ERROR: ${e.message}")
+                    statusView.text = "Error: ${e.message}"
+                }
+                Log.e(TAG, "Script error", e)
+            }
+        }.start()
     }
 
     override fun onResume() {
