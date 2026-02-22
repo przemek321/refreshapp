@@ -86,7 +86,14 @@ class MainActivity : Activity() {
     private fun runScript(path: String, statusView: TextView) {
         Thread {
             try {
-                val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "chmod +x $path && $path"))
+                val termuxBash = "/data/data/com.termux/files/usr/bin/bash"
+                val termuxEnv = "export PREFIX=/data/data/com.termux/files/usr && " +
+                    "export HOME=/data/data/com.termux/files/home && " +
+                    "export PATH=/data/data/com.termux/files/usr/bin:/data/data/com.termux/files/usr/bin/applets:\$PATH && " +
+                    "export LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib"
+                val cmd = "$termuxEnv && chmod +x $path && nohup $termuxBash $path > /dev/null 2>&1 &"
+                val process = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
+                val err = process.errorStream.bufferedReader().readText()
                 val exitCode = process.waitFor()
                 val name = path.substringAfterLast("/")
                 handler.post {
@@ -94,9 +101,8 @@ class MainActivity : Activity() {
                         statusView.text = "$name started"
                         Log.d(TAG, "$name executed OK")
                     } else {
-                        val err = process.errorStream.bufferedReader().readText()
-                        statusView.text = "$name error (code $exitCode)"
-                        Log.e(TAG, "$name failed: $err")
+                        statusView.text = "$name error ($exitCode): $err"
+                        Log.e(TAG, "$name failed ($exitCode): $err")
                     }
                 }
             } catch (e: Exception) {
